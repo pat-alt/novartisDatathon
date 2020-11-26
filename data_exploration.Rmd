@@ -1,0 +1,39 @@
+---
+title: "Untitled"
+author: "Patrick Altmeyer"
+date: "11/26/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(data.table)
+pairs <- c("country", "brand")
+dt_vol <- fread("data/gx_volume.csv")
+dt_vol[,i:=paste(country,brand,sep = "_")]
+dt_vol[,max_mon:=max(month_num),by=pairs]
+setkey(dt_vol,country, brand)
+dt_sub <- fread("data/submission_template.csv")
+dt_sub[,i:=paste(country,brand,sep = "_")]
+pairs_to_predict <- unique(dt_sub[,.(country,brand)])
+dt_vol[,test:=i %in% dt_sub$i]
+dt_vol[,vol_indexed:=volume/volume[month_num==-1],by=pairs]
+```
+
+```{r}
+library(ggplot2)
+ggplot(
+  data=dt_vol[,.N,by=.(month_num,test)],
+  aes(x=month_num, y=N)
+) +
+  geom_col() +
+  facet_grid(
+    cols = vars(test),
+    scales = "free"
+  )
+```
+
+
