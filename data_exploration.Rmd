@@ -58,15 +58,23 @@ dt_therapeutic[,V1:=NULL]
 setkey(dt_therapeutic, brand)
 setkey(dt_vol, brand)
 dt_vol <- dt_therapeutic[dt_vol]
+fwrite(dt_vol, "data/dt_merged.csv")
 ```
 
 
 ## Reshape
 
 ```{r}
-dt_vol[,month_name:=NULL]
-dt_vol[,volume:=NULL]
-dt_vol_w <- dcast(dt_vol,...~month_num, value.var = "vol_indexed")
+dt_vol_w <- copy(dt_vol)
+dt_vol_w[,month_name:=NULL]
+dt_vol_w[,volume:=NULL]
+dt_vol_w <- dcast(dt_vol_w,...~month_num, value.var = "vol_indexed")
+fwrite(dt_vol_w, "data/dt_merged_w_standardized.csv")
+
+dt_vol_w <- copy(dt_vol)
+dt_vol_w[,month_name:=NULL]
+dt_vol_w[,vol_indexed:=NULL]
+dt_vol_w <- dcast(dt_vol_w,...~month_num, value.var = "volume")
 fwrite(dt_vol_w, "data/dt_merged_w.csv")
 ```
 
