@@ -21,6 +21,7 @@ dt_sub[,i:=paste(country,brand,sep = "_")]
 pairs_to_predict <- unique(dt_sub[,.(country,brand)])
 dt_vol[,test:=i %in% dt_sub$i]
 dt_vol[,vol_indexed:=volume/volume[month_num==-1],by=pairs]
+dt_vol[,V1:=NULL]
 ```
 
 ```{r}
@@ -35,5 +36,39 @@ ggplot(
     scales = "free"
   )
 ```
+
+## More data
+
+```{r}
+dt_num_generics <- fread("data/gx_num_generics.csv")
+setkey(dt_num_generics, country, brand)
+dt_num_generics[,V1:=NULL]
+dt_vol <- dt_num_generics[dt_vol]
+dt_package <- fread("data/gx_package.csv", skip = 1, col.names = c("V1", "country", "brand", "package"))
+dt_package[,V1:=NULL]
+setkey(dt_package, country, brand)
+dt_vol <- dt_package[dt_vol]
+dt_panel <- fread("data/gx_panel.csv")
+dt_panel[,V1:=NULL]
+dt_panel <- dcast(dt_panel, country + brand ~ channel, value.var = "channel_rate")
+setkey(dt_panel, country, brand)
+dt_vol <- dt_panel[dt_vol]
+dt_therapeutic <- fread("data/gx_therapeutic_area.csv", skip = 1, col.names = c("V1","brand", "therap"))
+dt_therapeutic[,V1:=NULL]
+setkey(dt_therapeutic, brand)
+setkey(dt_vol, brand)
+dt_vol <- dt_therapeutic[dt_vol]
+```
+
+
+## Reshape
+
+```{r}
+dt_vol[,month_name:=NULL]
+dt_vol[,volume:=NULL]
+dt_vol_w <- dcast(dt_vol,...~month_num, value.var = "vol_indexed")
+fwrite(dt_vol_w, "data/dt_merged_w.csv")
+```
+
 
 
