@@ -1,0 +1,8 @@
+
+On gx_volume: presentation = 'OTHER'->'most frequent'
+Are countries equaly represented on Training / Submission?
+Maybe, different countries have different reporting schedules
+gx enters at the beginning of the month?
+Deadlines
+Data Sorting
+Is the submission file the final one, some submission/brand has data
