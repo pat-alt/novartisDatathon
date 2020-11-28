@@ -16,6 +16,8 @@ from sklearn.impute import SimpleImputer, KNNImputer, IterativeImputer
 from sklearn.pipeline import Pipeline, make_pipeline
 from sklearn import preprocessing
 import os
+import numpy as np
+import scipy.special as sc
 
 class main_model():
 	def __init__(self, data, col_num):
@@ -27,7 +29,8 @@ class main_model():
 		self.pipe = None
 		self.pipe_categ = None
 		self.pipe_numbers = None
-
+		self.data_L = self._prep_data(data)
+		self.data_U = self._prep_data(data)
 
 	def my_fit(self):
 		will_keep = (self.data_souce[str(self.col_num)] != -1)
@@ -43,38 +46,60 @@ class main_model():
 		data_features_X, data_Y = self._feature_engineering(data_norm)
 		data_X = self._run_pipe(data_features_X)
 		Y = self.model.predict(data_X)
-		Y = self._de_normalize(Y)
-		self._merge_pred_real(Y)
+		Y[Y<0.0001] = 0.0001
+		L, U = self._get_confidence_int(Y)
+		Y, L, U = self._de_normalize(Y, L, U)
+		self._merge_pred_real(Y, L, U)
 
-		return self.data_souce
+		return self.data_souce, self.data_L, self.data_U
 
-	def _merge_pred_real(self, Y):
+
+	def _merge_pred_real(self, Y, L, U):
 		aux = pd.DataFrame()
 		aux['realized'] = self.data_souce[str(self.col_num)]
 		aux['predicted'] = Y
+		aux['predicted_L'] = L
+		aux['predicted_U'] = U
 		aux['future_empty'] = self.data_souce[str(self.col_num)].fillna(-1)
 
 		self.data_souce[str(self.col_num)] = \
 			aux.apply(lambda x: x['predicted'] if x['future_empty'] == -1 else x['realized'], axis=1)
+		self.data_L[str(self.col_num)] = \
+			aux.apply(lambda x: x['predicted_L'] if x['future_empty'] == -1 else x['realized']*0.999, axis=1)
+		self.data_U[str(self.col_num)] = \
+			aux.apply(lambda x: x['predicted_U'] if x['future_empty'] == -1 else x['realized']*1.001, axis=1)
 
-	def my_data_update(self, data_P):
+	def my_data_update(self, data_P, data_L, data_U):
 		col_nums = [str(i) for i in range(self.col_num)]
 		self.data_souce[col_nums] = data_P[col_nums]
+		self.data_L = data_L
+		self.data_U = data_U
 
 	def update_sub_file(self, sub_file):
 		data_X = self.data_souce
+		data_L = self.data_L
+		data_U = self.data_U
 		col_num = self.col_num
 		for c in sub_file['country'].unique():
 			for b in sub_file[sub_file['country']==c]['brand'].unique():
 				aux = data_X[data_X['brand']==b]
+				aux_L = data_L[data_L['brand']==b]
+				aux_U = data_U[data_U['brand'] == b]
 				aux = aux[aux['country']==c]
+				aux_L = aux_L[aux_L['country'] == c]
+				aux_U = aux_U[aux_U['country'] == c]
+
 				try:
 					v = aux[str(col_num)].values[0]
+					l = aux_L[str(col_num)].values[0]
+					u = aux_U[str(col_num)].values[0]
 				except:
 					print('hola')
 
 				f_index = sub_file[(sub_file['country']==c) & (sub_file['brand']==b) & (sub_file['month_num']==col_num)]
 				sub_file.loc[f_index.index, 'prediction'] = v
+				sub_file.loc[f_index.index, 'pred_95_low'] = l
+				sub_file.loc[f_index.index, 'pred_95_high'] = u
 
 		return sub_file
 
@@ -122,8 +147,8 @@ class main_model():
 
 		return norm_data
 
-	def _de_normalize(self, Y):
-		return Y * self.avg
+	def _de_normalize(self, Y, L, U):
+		return Y * self.avg, L * self.avg, U * self.avg
 
 	def _feature_engineering(self, data):
 		col_num = self.col_num
@@ -187,6 +212,35 @@ class main_model():
 				columns=list(numbers) + list(self.pipe.transformers_[1][1]['onehot'].get_feature_names(categ)))
 
 		return X_train_proposed
+
+	def _get_confidence_int(self, Y):
+		beta = 5.0
+
+		Y = np.array(Y)
+		Z = (1 - Y)
+		W = Y * beta
+
+		alpha = W/Z
+
+		L = sc.betaincinv(alpha, beta, .075)
+		U = sc.betaincinv(alpha, beta, .925)
+
+		index = Y > .9
+		L[index] = .95*Y[index]
+		U[index] = 1.05*Y[index]
+
+		L[Y < 0.00009] = 0.00009
+
+		index = U < Y
+		U[index] = 1.05 * Y[index]
+
+		index = Y < L
+		L[index] = 0.95 * Y[index]
+
+
+		return L, U
+
+
 
 
 

@@ -62,6 +62,8 @@ def run_predictor_clean(root_path, model_name):
 	sub_file = pd.read_csv(root_path + '/data/submission_template.csv')
 
 	data_P = []
+	data_L = []
+	data_U = []
 
 	for i in range(24):
 		print(i)
@@ -69,9 +71,9 @@ def run_predictor_clean(root_path, model_name):
 			nc = pickle.load(f)
 
 			if i > 0:
-				nc.my_data_update(data_P) # <- [0, i-1] unnormalized + [country, brand]
+				nc.my_data_update(data_P, data_L, data_U) # <- [0, i-1] unnormalized + [country, brand]
 
-			data_P = nc.my_predict() # -> [0, i] unnormailize + [country, brand]
+			data_P, data_L, data_U = nc.my_predict() # -> [0, i] unnormailize + [country, brand]
 		try:
 			sub_file = nc.update_sub_file(sub_file)
 		except:
@@ -79,7 +81,7 @@ def run_predictor_clean(root_path, model_name):
 
 	sub_file.to_csv(root_path + '/data/submission_template_'+model_name+'.csv')
 
-	print('hola')
+	print('We will win!!!! ;-)')
 
 
 if __name__ == '__main__':
