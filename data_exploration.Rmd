@@ -11,17 +11,28 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 library(data.table)
+library(zoo)
 pairs <- c("country", "brand")
 dt_vol <- fread("data/gx_volume.csv")
-dt_vol[,i:=paste(country,brand,sep = "_")]
+dt_vol[,i:=paste(country,brand,sep = "-")]
 dt_vol[,max_mon:=max(month_num),by=pairs]
 setkey(dt_vol,country, brand)
 dt_sub <- fread("data/submission_template.csv")
-dt_sub[,i:=paste(country,brand,sep = "_")]
+dt_sub[,i:=paste(country,brand,sep = "-")]
 pairs_to_predict <- unique(dt_sub[,.(country,brand)])
 dt_vol[,test:=i %in% dt_sub$i]
-dt_vol[,vol_indexed:=volume/volume[month_num==-1],by=pairs]
+# Complete the months:
+dt_vol <- setDT(dt_vol)[
+    CJ(i = i, month_num = month_num, unique=TRUE), 
+    on=.(i, month_num)
+]
 dt_vol[,V1:=NULL]
+dt_vol[,(c("country", "brand")):=tstrsplit(i,"-")]
+# Backwards propagate:
+dt_vol[,volume:=na.locf(volume, fromLast=T,na.rm = F),by=.(country, brand)]
+# Month of entry:
+dt_vol[month_num==0,month_entry:=month_name]
+dt_vol[,vol_indexed:=volume/volume[month_num==-1],by=pairs]
 ```
 
 ```{r}
@@ -58,7 +69,9 @@ dt_therapeutic[,V1:=NULL]
 setkey(dt_therapeutic, brand)
 setkey(dt_vol, brand)
 dt_vol <- dt_therapeutic[dt_vol]
-fwrite(dt_vol, "data/dt_merged.csv")
+dt_vol[,max_mon:=NULL]
+dt_vol[,i:=NULL]
+# write(dt_vol, "data/dt_merged.csv")
 ```
 
 
@@ -77,6 +90,7 @@ dt_vol_w[,vol_indexed:=NULL]
 dt_vol_w <- dcast(dt_vol_w,...~month_num, value.var = "volume")
 fwrite(dt_vol_w, "data/dt_merged_w.csv")
 ```
+
 
 
 
