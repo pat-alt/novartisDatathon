@@ -16,10 +16,12 @@ from sklearn.impute import SimpleImputer, KNNImputer, IterativeImputer
 from sklearn.pipeline import Pipeline, make_pipeline
 from sklearn import preprocessing
 import os
+from framework.metrix import apply_metrics
+
 
 def run_predictor_clean(root_path, model_name):
 	sub_file = pd.read_csv(root_path + '/data/submission_template.csv')
-	original_file = pd.read_csv('data/dt_merged_w.csv')
+	original_data = pd.read_csv(root_path + '/data/dt_merged_w.csv')
 
 	data_P = []
 	data_L = []
@@ -35,14 +37,16 @@ def run_predictor_clean(root_path, model_name):
 
 			data_P, data_L, data_U = nc.my_predict() # -> [0, i] unnormailize + [country, brand]
 		try:
-			sub_file = nc.update_sub_file(sub_file, original_file)
+			sub_file = nc.update_sub_file(sub_file, original_data)
 		except:
 			print('hola')
 
 	sub_file.to_csv(root_path + '/data/submission_template_'+model_name+'.csv', index=False)
 
 	print('We will win!!!! ;-)')
-
+	result = apply_metrics(sub_file)
+	print('-)')
 
 if __name__ == '__main__':
 	run_predictor_clean('C:\\Users\\EGimenez\\ME\\projects\\BGSE\\Novartis', 'helloworld')
+	#run_predictor_clean('C:\\Users\\EGimenez\\ME\\projects\\BGSE\\Novartis', 'calibrator_glm_3')

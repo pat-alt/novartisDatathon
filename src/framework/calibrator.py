@@ -32,6 +32,8 @@ class main_model():
 		self.pipe_numbers = None
 		self.data_L = self._prep_data(data)
 		self.data_U = self._prep_data(data)
+		self.testing = testing
+		self.rand_state = rand_state
 
 	def my_fit(self):
 		will_keep = (self.data_souce[str(self.col_num)] != -1)
@@ -41,7 +43,7 @@ class main_model():
 		self._make_pipe(data_features_X)
 		data_X = self._run_pipe(data_features_X)
 		if self.testing > 0:
-			data_X, X_test, data_Y, y_test = train_test_split(data_X, data_Y, random_state=rand_state)
+			data_X, X_test, data_Y, y_test = train_test_split(data_X, data_Y, test_size=self.testing, random_state=self.rand_state)
 		self.model.fit(data_X, data_Y)
 
 	def my_predict(self):
@@ -50,6 +52,7 @@ class main_model():
 		data_X = self._run_pipe(data_features_X)
 		Y = self.model.predict(data_X)
 		Y[Y<0.0001] = 0.0001
+		Y[Y>1.5] = 1.5
 		L, U = self._get_confidence_int(Y)
 		Y, L, U = self._de_normalize(Y, L, U)
 		self._merge_pred_real(Y, L, U)
@@ -100,12 +103,23 @@ class main_model():
 				sub_file.loc[f_index.index, 'pred_95_low'] = l
 				sub_file.loc[f_index.index, 'pred_95_high'] = u
 
-				if original_file:
+				if original_file is not None:
 					aux_o = original_file[original_file['brand']==b]
 					aux_o = aux_o[aux_o['country']==c]
-					o = aux_o[str(col_num)].values[0]
-					sub_file.loc[f_index.index, 'actuals'] = o
-					sub_file.loc[f_index.index, 'avg_vol'] = self.avg[str(col_num)]
+					try:
+						o = aux_o[str(col_num)].values[0]
+						if np.isnan(o):
+							o = v
+						sub_file.loc[f_index.index, 'actuals'] = o
+					except:
+						print('ooo')
+					try:
+						avg_ = self.avg[aux.index].values[0]
+						if np.isnan(avg_):
+							print('eo')
+						sub_file.loc[f_index.index, 'avg_vol'] = avg_
+					except:
+						print('aaa')
 
 
 		return sub_file
@@ -247,7 +261,7 @@ class main_model():
 
 		return L, U
 
-def create_classifyer(root_path, data_name, class_name, model_name, col_num):
+def create_classifyer(root_path, data_name, class_name, model_name, col_num, testing=0, rand_state=42):
 	data = pd.read_csv(root_path + '/data/' + data_name)
 	nc = class_name(data, col_num)
 	nc.my_fit()
