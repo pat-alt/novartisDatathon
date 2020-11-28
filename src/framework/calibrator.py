@@ -400,17 +400,6 @@ class nov_calibrator():
 
 		return sub_file
 
-class NewNov(nov_calibrator):
-
-	def __init__(self, data, col_num):
-		super().__init__(data, col_num)
-		self.model = DecisionTreeRegressor()
-
-
-	def fit_yourself(self):
-		print('great')
-		super().fit_yourself()
-
 def create_classifyer(root_path, data_name, class_name, model_name, col_num):
 	data = pd.read_csv(root_path + '/data/' + data_name)
 	nc = class_name(data, col_num)
