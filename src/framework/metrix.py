@@ -20,8 +20,8 @@ def uncertainty_metric(actuals, upper_bound, lower_bound, avg_volume):
         error_metric: Uncertainty Metric score (%)
     """
     # Assert that all the sizes are OK
-    assert (len(lower_bound) == len(upper_bound)) == (len(actuals) == 24), \
-        "We should have 24 sorted actuals, upper_bound and lower_bound intervals"
+    #assert (len(lower_bound) == len(upper_bound)) == (len(actuals) == 24), \
+    #    "We should have 24 sorted actuals, upper_bound and lower_bound intervals"
 
     uncertainty_first6 = (
         # Wide intervals are penalized

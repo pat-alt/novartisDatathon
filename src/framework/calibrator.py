@@ -34,6 +34,8 @@ class main_model():
 		self.data_U = self._prep_data(data)
 		self.testing = testing
 		self.rand_state = rand_state
+		self.test_index = None
+		self.non_test_index = None
 
 	def my_fit(self):
 		will_keep = (self.data_souce[str(self.col_num)] != -1)
@@ -44,6 +46,8 @@ class main_model():
 		data_X = self._run_pipe(data_features_X)
 		if self.testing > 0:
 			data_X, X_test, data_Y, y_test = train_test_split(data_X, data_Y, test_size=self.testing, random_state=self.rand_state)
+			self.test_index = X_test.index
+			self.non_test_index = data_X.index
 		self.model.fit(data_X, data_Y)
 
 	def my_predict(self):
@@ -51,7 +55,7 @@ class main_model():
 		data_features_X, data_Y = self._feature_engineering(data_norm)
 		data_X = self._run_pipe(data_features_X)
 		Y = self.model.predict(data_X)
-		Y[Y<0.0001] = 0.0001
+		Y[Y<0.000001] = 0.000001
 		Y[Y>1.5] = 1.5
 		L, U = self._get_confidence_int(Y)
 		Y, L, U = self._de_normalize(Y, L, U)
@@ -66,13 +70,15 @@ class main_model():
 		aux['predicted_L'] = L
 		aux['predicted_U'] = U
 		aux['future_empty'] = self.data_souce[str(self.col_num)].fillna(-1)
+		aux['testing'] = 0
+		aux.loc[self.test_index, ['testing']] = 1
 
 		self.data_souce[str(self.col_num)] = \
-			aux.apply(lambda x: x['predicted'] if x['future_empty'] == -1 else x['realized'], axis=1)
+			aux.apply(lambda x: x['predicted'] if (x['future_empty'] == -1 or x['testing'] ==1) else x['realized'], axis=1)
 		self.data_L[str(self.col_num)] = \
-			aux.apply(lambda x: x['predicted_L'] if x['future_empty'] == -1 else x['realized']*0.999, axis=1)
+			aux.apply(lambda x: x['predicted_L'] if (x['future_empty'] == -1 or x['testing'] ==1) else x['realized']*0.999, axis=1)
 		self.data_U[str(self.col_num)] = \
-			aux.apply(lambda x: x['predicted_U'] if x['future_empty'] == -1 else x['realized']*1.001, axis=1)
+			aux.apply(lambda x: x['predicted_U'] if (x['future_empty'] == -1 or x['testing'] ==1) else x['realized']*1.001, axis=1)
 
 	def my_data_update(self, data_P, data_L, data_U):
 		col_nums = [str(i) for i in range(self.col_num)]
@@ -94,9 +100,12 @@ class main_model():
 				aux_L = aux_L[aux_L['country'] == c]
 				aux_U = aux_U[aux_U['country'] == c]
 
-				v = aux[str(col_num)].values[0]
-				l = aux_L[str(col_num)].values[0]
-				u = aux_U[str(col_num)].values[0]
+				try:
+					v = aux[str(col_num)].values[0]
+					l = aux_L[str(col_num)].values[0]
+					u = aux_U[str(col_num)].values[0]
+				except:
+					print('g')
 
 				f_index = sub_file[(sub_file['country']==c) & (sub_file['brand']==b) & (sub_file['month_num']==col_num)]
 				sub_file.loc[f_index.index, 'prediction'] = v
@@ -263,7 +272,7 @@ class main_model():
 
 def create_classifyer(root_path, data_name, class_name, model_name, col_num, testing=0, rand_state=42):
 	data = pd.read_csv(root_path + '/data/' + data_name)
-	nc = class_name(data, col_num)
+	nc = class_name(data, col_num, testing=testing, rand_state=rand_state)
 	nc.my_fit()
 
 	# Make directory

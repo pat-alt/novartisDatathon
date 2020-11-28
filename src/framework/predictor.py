@@ -44,9 +44,10 @@ def run_predictor_clean(root_path, model_name):
 	sub_file.to_csv(root_path + '/data/submission_template_'+model_name+'.csv', index=False)
 
 	print('We will win!!!! ;-)')
-	result = apply_metrics(sub_file)
+	ax = sub_file.groupby(['country', 'brand']).apply(apply_metrics)
+	print(ax[ax['custom_metric'] != 0].mean())
 	print('-)')
 
 if __name__ == '__main__':
-	run_predictor_clean('C:\\Users\\EGimenez\\ME\\projects\\BGSE\\Novartis', 'helloworld')
+	run_predictor_clean('C:\\Users\\EGimenez\\ME\\projects\\BGSE\\Novartis', 'helloworld_22_10')
 	#run_predictor_clean('C:\\Users\\EGimenez\\ME\\projects\\BGSE\\Novartis', 'calibrator_glm_3')
