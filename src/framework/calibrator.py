@@ -18,9 +18,10 @@ from sklearn import preprocessing
 import os
 import numpy as np
 import scipy.special as sc
+from sklearn.model_selection import train_test_split
 
 class main_model():
-	def __init__(self, data, col_num):
+	def __init__(self, data, col_num, testing=0, rand_state=42):
 		self.model = DecisionTreeRegressor()
 		self.col_num = col_num
 		self.data_souce = self._prep_data(data)
@@ -39,6 +40,8 @@ class main_model():
 		data_features_X, data_Y = self._feature_engineering(data_norm)
 		self._make_pipe(data_features_X)
 		data_X = self._run_pipe(data_features_X)
+		if self.testing > 0:
+			data_X, X_test, data_Y, y_test = train_test_split(data_X, data_Y, random_state=rand_state)
 		self.model.fit(data_X, data_Y)
 
 	def my_predict(self):
@@ -52,7 +55,6 @@ class main_model():
 		self._merge_pred_real(Y, L, U)
 
 		return self.data_souce, self.data_L, self.data_U
-
 
 	def _merge_pred_real(self, Y, L, U):
 		aux = pd.DataFrame()
@@ -75,7 +77,7 @@ class main_model():
 		self.data_L = data_L
 		self.data_U = data_U
 
-	def update_sub_file(self, sub_file):
+	def update_sub_file(self, sub_file, original_file=None):
 		data_X = self.data_souce
 		data_L = self.data_L
 		data_U = self.data_U
@@ -89,17 +91,22 @@ class main_model():
 				aux_L = aux_L[aux_L['country'] == c]
 				aux_U = aux_U[aux_U['country'] == c]
 
-				try:
-					v = aux[str(col_num)].values[0]
-					l = aux_L[str(col_num)].values[0]
-					u = aux_U[str(col_num)].values[0]
-				except:
-					print('hola')
+				v = aux[str(col_num)].values[0]
+				l = aux_L[str(col_num)].values[0]
+				u = aux_U[str(col_num)].values[0]
 
 				f_index = sub_file[(sub_file['country']==c) & (sub_file['brand']==b) & (sub_file['month_num']==col_num)]
 				sub_file.loc[f_index.index, 'prediction'] = v
 				sub_file.loc[f_index.index, 'pred_95_low'] = l
 				sub_file.loc[f_index.index, 'pred_95_high'] = u
+
+				if original_file:
+					aux_o = original_file[original_file['brand']==b]
+					aux_o = aux_o[aux_o['country']==c]
+					o = aux_o[str(col_num)].values[0]
+					sub_file.loc[f_index.index, 'actuals'] = o
+					sub_file.loc[f_index.index, 'avg_vol'] = self.avg[str(col_num)]
+
 
 		return sub_file
 
@@ -240,177 +247,6 @@ class main_model():
 
 		return L, U
 
-
-
-
-
-class nov_calibrator():
-	def __init__(self, data, col_num):
-		self.model = DecisionTreeRegressor()
-		self.data_souce = data
-		self.col_num = col_num
-		self.data_X = None
-		self.data_Y = None
-		self.avg = None
-		self.ifuture_columns_empty = self._future_columns_empty(data)
-
-	def fit_yourself(self):
-		data_X, data_Y = self.easy_data(self.col_num)
-		self.model.fit(data_X, data_Y)
-
-	def fit(self, X, Y):
-		self.model.fit(X, Y)
-
-	def predict(self, X):
-	    return self.model.predict(X)
-
-	def make_pipe(self, X_train, numbers, categ):
-		# This is not a general function anymore
-		X_train['A']= X_train['A'].fillna(0)
-		X_train['B']= X_train['B'].fillna(0)
-		X_train['C']= X_train['C'].fillna(0)
-		X_train['D']= X_train['D'].fillna(0)
-		X_train[numbers] = X_train[numbers].fillna(-1)
-
-		# We exclude test from numbers
-		numbers = list(numbers)
-		numbers.remove('test')
-
-		test = X_train['test']
-
-		# Split preprocessing depending on type:
-		# 1) Numerical:
-		numeric_transformer = Pipeline(
-			steps=[
-				('scaler', StandardScaler())
-			]
-		)
-		# 2) Categorical:
-		categorical_transformer = Pipeline(
-			steps=[
-				('onehot', OneHotEncoder(handle_unknown='ignore'))
-			]
-		)
-		# Combine:
-		preprocessor = ColumnTransformer(
-			transformers=[
-				('num', numeric_transformer, numbers),
-				('cat', categorical_transformer, categ)
-			],
-			remainder='drop'
-		)
-		# Fit and transform:
-		preprocessor.fit(X_train)
-		my_column_name = X_train.columns
-		X_train_proposed = preprocessor.transform(X_train)
-		# Turn back into DataFrames:
-		try:
-			X_train_proposed = pd.DataFrame.sparse.from_spmatrix(
-				X_train_proposed,
-				columns=list(numbers) + list(preprocessor.transformers_[1][1]['onehot'].get_feature_names(categ)))
-		except AttributeError:
-			X_train_proposed = pd.DataFrame(
-				X_train_proposed,
-				columns=list(numbers) + list(preprocessor.transformers_[1][1]['onehot'].get_feature_names(categ)))
-
-		X_train_proposed['test'] = test
-
-		return X_train_proposed
-
-	def normalize(self, X_train):
-
-		avg_cols = [str(i) for i in range(-12, 0)]
-
-		aux = X_train[avg_cols]
-		aux = aux.mean(axis=1)
-
-		try:
-			for i in range(-137, 24):
-				X_train[str(i)] = X_train[str(i)]/aux
-		except:
-			pass
-
-		self.avg = aux
-
-		return X_train
-
-	def de_normalize(self, X_train):
-		aux = self.avg
-		try:
-			for i in range(-137, 24):
-				X_train[str(i)] = X_train[str(i)]*aux
-		except:
-			pass
-
-		return X_train
-
-	def _future_columns_empty(self, X_train):
-		aux_cols = [str(i) for i in range(0, 24)]
-		return X_train[aux_cols].fillna(-1)
-
-	def easy_data(self, col_num):
-
-		data = self.data_souce
-
-		my_columns = []
-		for c in data.columns:
-			try:
-				c = int(c)
-				if c <= col_num:
-					my_columns.append(str(c))
-			except:
-				my_columns.append(c)
-
-		data = data[my_columns]
-		will_drop = (data[str(col_num)].isna() == False)
-		data = self.normalize(data)
-
-		data_X = data.drop([str(col_num)], axis=1)
-		data_Y = data[str(col_num)]
-
-		data_X['num_generics'] = data_X['num_generics'].map(lambda x: float(x))
-		data_X['test'] = data_X['test'].map(lambda x: float(x))
-
-		categ = data_X.columns[(data_X.dtypes != int) & (data_X.dtypes != float)]
-		numbers = data_X.columns[(data_X.dtypes == int) | (data_X.dtypes == float)]
-
-		data_X = self.make_pipe(data_X, numbers, categ)
-		# data_X = bayes_ridge(data_X, [], categ)
-
-		self.data_X = data_X
-		self.data_Y = data_Y
-
-		data_X = data_X[will_drop]
-		data_Y = data_Y[will_drop]
-
-		return data_X, data_Y
-
-	def merge_data(self, sub_file, data_X, col_num):
-		for c in sub_file['country'].unique():
-			for b in sub_file[sub_file['country']==c]['brand'].unique():
-				aux = data_X[data_X['brand_'+b]==1.0]
-				aux = aux[aux['country_'+c]==1.0]
-				try:
-					v = aux[str(col_num)].values[0]
-				except:
-					print('hola')
-
-				f_index = sub_file[(sub_file['country']==c) & (sub_file['brand']==b) & (sub_file['month_num']==col_num)]
-				sub_file.loc[f_index.index, 'prediction'] = v
-
-		return sub_file
-
-class NewNov(nov_calibrator):
-
-	def __init__(self, data, col_num):
-		super().__init__(data, col_num)
-		self.model = DecisionTreeRegressor()
-
-
-	def fit_yourself(self):
-		print('great')
-		super().fit_yourself()
-
 def create_classifyer(root_path, data_name, class_name, model_name, col_num):
 	data = pd.read_csv(root_path + '/data/' + data_name)
 	nc = class_name(data, col_num)
@@ -424,4 +260,3 @@ def create_classifyer(root_path, data_name, class_name, model_name, col_num):
 
 	with open(root_path + '/models/'+model_name+'/'+ 'model_'+str(col_num)+'.pk', 'wb') as f:
 		pickle.dump(nc, f)
-
