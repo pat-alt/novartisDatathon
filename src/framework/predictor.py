@@ -79,7 +79,7 @@ def run_predictor_clean(root_path, model_name):
 		except:
 			print('hola')
 
-	sub_file.to_csv(root_path + '/data/submission_template_'+model_name+'.csv')
+	sub_file.to_csv(root_path + '/data/submission_template_'+model_name+'.csv', index=False)
 
 	print('We will win!!!! ;-)')
 
