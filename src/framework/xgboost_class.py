@@ -21,11 +21,6 @@ class XGB(main_model):
 		data_X['g_12'] = (data_X['-1'] - data_X['-12']) / data_X['-12']
 		data_X['g_24'] = (data_X['-1'] - data_X['-24']) / data_X['-24']
 
-		# target encoding
-#		encoder = ce.TargetEncoder(cols=['brand', 'country', 'therap'])
-#		encoder.fit(data_X, data_Y)
-#		data_X = encoder.transform(data_X)
-
 		# seasonality for months:
 		data_X['month_entry'] = data_X['month_entry'].map({
 			'Jan': 1,
@@ -43,6 +38,16 @@ class XGB(main_model):
 		})
 		data_X['sin_month'] = np.sin(2 * np.pi * data_X.month_entry / 12)
 		data_X['cos_month'] = np.cos(2 * np.pi * data_X.month_entry / 12)
+
+
+
+		## country target encoding
+		country_group1 = ['country_7', 'country_12']
+		country_group2 = ['country_16']
+		data_X['country'].map(lambda x: 1 if x in country_group1)
+		data_X['country'].map(lambda x: 2 if x in country_group1)
+		data_X['country'].map(lambda x: 3 if x not in country_group1 or country_group2)
+
 		return data_X, data_Y
 
 	def _make_pipe(self, data_X):
