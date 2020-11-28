@@ -17,13 +17,192 @@ from sklearn.pipeline import Pipeline, make_pipeline
 from sklearn import preprocessing
 import os
 
+class main_model():
+	def __init__(self, data, col_num):
+		self.model = DecisionTreeRegressor()
+		self.col_num = col_num
+		self.data_souce = self._prep_data(data)
+		self.avg = None
+		self.ifuture_columns_empty = None
+		self.pipe = None
+		self.pipe_categ = None
+		self.pipe_numbers = None
+
+
+	def my_fit(self):
+		will_keep = (self.data_souce[str(self.col_num)] != -1)
+		data_norm = self._normalize()
+		data_norm = data_norm[will_keep]
+		data_features_X, data_Y = self._feature_engineering(data_norm)
+		self._make_pipe(data_features_X)
+		data_X = self._run_pipe(data_features_X)
+		self.model.fit(data_X, data_Y)
+
+	def my_predict(self):
+		data_norm = self._normalize()
+		data_features_X, data_Y = self._feature_engineering(data_norm)
+		data_X = self._run_pipe(data_features_X)
+		Y = self.model.predict(data_X)
+		Y = self._de_normalize(Y)
+		self._merge_pred_real(Y)
+
+		return self.data_souce
+
+	def _merge_pred_real(self, Y):
+		aux = pd.DataFrame()
+		aux['realized'] = self.data_souce[str(self.col_num)]
+		aux['predicted'] = Y
+		aux['future_empty'] = self.data_souce[str(self.col_num)].fillna(-1)
+
+		self.data_souce[str(self.col_num)] = \
+			aux.apply(lambda x: x['predicted'] if x['future_empty'] == -1 else x['realized'], axis=1)
+
+	def my_data_update(self, data_P):
+		col_nums = [str(i) for i in range(self.col_num)]
+		self.data_souce[col_nums] = data_P[col_nums]
+
+	def update_sub_file(self, sub_file):
+		data_X = self.data_souce
+		col_num = self.col_num
+		for c in sub_file['country'].unique():
+			for b in sub_file[sub_file['country']==c]['brand'].unique():
+				aux = data_X[data_X['brand']==b]
+				aux = aux[aux['country']==c]
+				try:
+					v = aux[str(col_num)].values[0]
+				except:
+					print('hola')
+
+				f_index = sub_file[(sub_file['country']==c) & (sub_file['brand']==b) & (sub_file['month_num']==col_num)]
+				sub_file.loc[f_index.index, 'prediction'] = v
+
+		return sub_file
+
+	def _prep_data(self, data):
+		# This is not a general function anymore
+		numbers = data.columns[(data.dtypes == int) | (data.dtypes == float)]
+		data['A']= data['A'].fillna(0)
+		data['B']= data['B'].fillna(0)
+		data['C']= data['C'].fillna(0)
+		data['D']= data['D'].fillna(0)
+		data[numbers] = data[numbers].fillna(-1)
+
+		data['num_generics'] = data['num_generics'].map(lambda x: float(x))
+		data['test'] = data['test'].map(lambda x: float(x))
+
+		# Ignoring Future data
+		my_columns = []
+		for c in data.columns:
+			try:
+				c = int(c)
+				if c <= self.col_num:
+					my_columns.append(str(c))
+			except:
+				my_columns.append(c)
+
+		data = data[my_columns]
+
+		return data
+
+	def _normalize(self):
+		avg_cols = [str(i) for i in range(-12, 0)]
+
+		aux = self.data_souce[avg_cols]
+		aux = aux.mean(axis=1)
+
+		norm_data = self.data_souce.copy()
+
+		try:
+			for i in range(-137, 24):
+				norm_data[str(i)] = norm_data[str(i)] / aux
+		except:
+			pass
+
+		self.avg = aux
+
+		return norm_data
+
+	def _de_normalize(self, Y):
+		return Y * self.avg
+
+	def _feature_engineering(self, data):
+		col_num = self.col_num
+		# Here we can do more feature engineering
+
+		data = data.drop(['test'], axis=1)
+
+		data_X = data.drop([str(col_num)], axis=1)
+		data_Y = data[str(col_num)]
+
+		return data_X, data_Y
+
+	def _make_pipe(self, data_X):
+
+		categ = data_X.columns[(data_X.dtypes != int) & (data_X.dtypes != float)]
+		numbers = data_X.columns[(data_X.dtypes == int) | (data_X.dtypes == float)]
+		numbers = list(numbers)
+
+		# Split preprocessing depending on type:
+		# 1) Numerical:
+		numeric_transformer = Pipeline(
+			steps=[
+				('scaler', StandardScaler())
+			]
+		)
+		# 2) Categorical:
+		categorical_transformer = Pipeline(
+			steps=[
+				('onehot', OneHotEncoder(handle_unknown='ignore'))
+			]
+		)
+		# Combine:
+		preprocessor = ColumnTransformer(
+			transformers=[
+				('num', numeric_transformer, numbers),
+				('cat', categorical_transformer, categ)
+			],
+			remainder='drop'
+		)
+		# Fit and transform:
+		preprocessor.fit(data_X)
+
+		self.pipe = preprocessor
+		self.pipe_categ = categ
+		self.pipe_numbers = numbers
+
+	def _run_pipe(self, data):
+		my_column_name = data.columns
+		X_train_proposed = self.pipe.transform(data)
+		numbers = self.pipe_numbers
+		categ = self.pipe_categ
+
+		# Turn back into DataFrames:
+		try:
+			X_train_proposed = pd.DataFrame.sparse.from_spmatrix(
+				X_train_proposed,
+				columns=list(numbers) + list(self.pipe.transformers_[1][1]['onehot'].get_feature_names(categ)))
+		except AttributeError:
+			X_train_proposed = pd.DataFrame(
+				X_train_proposed,
+				columns=list(numbers) + list(self.pipe.transformers_[1][1]['onehot'].get_feature_names(categ)))
+
+		return X_train_proposed
+
+
+
 class nov_calibrator():
-	def __init__(self, model):
-		self.model = model
+	def __init__(self, data, col_num):
+		self.model = DecisionTreeRegressor()
+		self.data_souce = data
+		self.col_num = col_num
 		self.data_X = None
 		self.data_Y = None
 		self.avg = None
-		self.ifuture_columns_empty = None
+		self.ifuture_columns_empty = self._future_columns_empty(data)
+
+	def fit_yourself(self):
+		data_X, data_Y = self.easy_data(self.col_num)
+		self.model.fit(data_X, data_Y)
 
 	def fit(self, X, Y):
 		self.model.fit(X, Y)
@@ -101,13 +280,23 @@ class nov_calibrator():
 
 		return X_train
 
-	def future_columns_empty(self, X_train):
+	def de_normalize(self, X_train):
+		aux = self.avg
+		try:
+			for i in range(-137, 24):
+				X_train[str(i)] = X_train[str(i)]*aux
+		except:
+			pass
+
+		return X_train
+
+	def _future_columns_empty(self, X_train):
 		aux_cols = [str(i) for i in range(0, 24)]
-		self.ifuture_columns_empty = X_train[aux_cols].fillna(-1)
+		return X_train[aux_cols].fillna(-1)
 
-	def easy_data(self, data, col_num):
+	def easy_data(self, col_num):
 
-		self.future_columns_empty(data)
+		data = self.data_souce
 
 		my_columns = []
 		for c in data.columns:
@@ -157,11 +346,21 @@ class nov_calibrator():
 
 		return sub_file
 
-def create_classifyer(root_path, data_name, model_name, col_num):
+class NewNov(nov_calibrator):
+
+	def __init__(self, data, col_num):
+		super().__init__(data, col_num)
+		self.model = DecisionTreeRegressor()
+
+
+	def fit_yourself(self):
+		print('great')
+		super().fit_yourself()
+
+def create_classifyer(root_path, data_name, class_name, model_name, col_num):
 	data = pd.read_csv(root_path + '/data/' + data_name)
-	nc = nov_calibrator(DecisionTreeRegressor())
-	data_X, data_Y = nc.easy_data(data, col_num)
-	nc.fit(data_X, data_Y)
+	nc = class_name(data, col_num)
+	nc.my_fit()
 
 	# Make directory
 	try:
