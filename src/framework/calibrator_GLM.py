@@ -1,4 +1,4 @@
-from framework.calibrator import main_model
+from calibrator import main_model
 from sklearn.linear_model import TweedieRegressor
 
 class calibrator_glm(main_model):

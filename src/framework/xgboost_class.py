@@ -7,8 +7,8 @@ import xgboost as xgb
 
 class XGB(main_model):
 
-	def __init__(self, data, col_num):
-		super().__init__(data, col_num)
+	def __init__(self, data, col_num, testing=0, rand_state=42):
+		super().__init__(data, col_num, testing=0.2, rand_state=42)
 		self.model = xgb.XGBRegressor(n_estimators=100, objective='reg:squarederror')
 
 
@@ -39,15 +39,15 @@ class XGB(main_model):
 		data_X['sin_month'] = np.sin(2 * np.pi * data_X.month_entry / 12)
 		data_X['cos_month'] = np.cos(2 * np.pi * data_X.month_entry / 12)
 
-
-
 		## country target encoding
-		country_group1 = ['country_7', 'country_12']
-		country_group2 = ['country_16']
-		data_X['country'].map(lambda x: 1 if x in country_group1)
-		data_X['country'].map(lambda x: 2 if x in country_group1)
-		data_X['country'].map(lambda x: 3 if x not in country_group1 or country_group2)
-
+		def country_group(country):
+			if country in ['country_7', 'country_12']:
+				return 1
+			elif country == 'country_16':
+				return 2
+			else:
+				return 3
+		data_X['country_group'] = data_X['country'].map(country_group)
 		return data_X, data_Y
 
 	def _make_pipe(self, data_X):

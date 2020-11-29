@@ -16,7 +16,7 @@ from sklearn.impute import SimpleImputer, KNNImputer, IterativeImputer
 from sklearn.pipeline import Pipeline, make_pipeline
 from sklearn import preprocessing
 import os
-from framework.metrix import apply_metrics
+from metrix import apply_metrics
 
 
 def run_predictor_clean(root_path, model_name):
@@ -41,13 +41,17 @@ def run_predictor_clean(root_path, model_name):
 		except:
 			print('hola')
 
-	sub_file.to_csv(root_path + '/data/submission_template_'+model_name+'.csv', index=False)
 
 	print('We will win!!!! ;-)')
 	ax = sub_file.groupby(['country', 'brand']).apply(apply_metrics)
 	print(ax[ax['custom_metric'] != 0].mean())
+	cm = ax[ax['custom_metric'] != 0].mean()[0]
+	um = ax[ax['custom_metric'] != 0].mean()[1]
 	print('-)')
+	sub_file.to_csv(root_path + '/data/submission_cm_' + str(round(cm,3)) + '_um_' + str(round(um,3))+ '_'+model_name+'.csv', index=False)
+
 
 if __name__ == '__main__':
 	run_predictor_clean('C:\\Users\\EGimenez\\ME\\projects\\BGSE\\Novartis', 'helloworld_22_10')
 	#run_predictor_clean('C:\\Users\\EGimenez\\ME\\projects\\BGSE\\Novartis', 'calibrator_glm_3')
+	#run_predictor_clean('/Users/simonneumeyer/Desktop/NOVARTIS/novartisDatathon', 'xgboost')

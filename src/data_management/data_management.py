@@ -3,7 +3,7 @@ import pandas as pd
 def get_data():
 	gx_volume = pd.read_csv('../../data/gx_volume.csv')
 	gx_therapeutic_area = pd.read_csv('../../data/gx_therapeutic_area.csv')
-	#gx_panel = pd.read_csv('../../data/gx_panel.csv')
+	gx_panel = pd.read_csv('../../data/gx_panel.csv')
 	gx_package = pd.read_csv('../../data/gx_package.csv')
 	gx_num_generics = pd.read_csv('../../data/gx_num_generics.csv')
 
@@ -14,10 +14,10 @@ def get_data():
 	gx_volume = gx_volume.merge(gx_package[['country', 'brand', 'presentation']], on=['country', 'brand'])
 	gx_volume = gx_volume.merge(gx_num_generics[['country', 'brand', 'num_generics']], on=['country', 'brand'])
 
-	#gx_volume_norm = gx_volume[gx_volume['month_num'] == -1][['country', 'brand', 'volume']].rename(columns={"volume": "volume_1"})
+	gx_volume_norm = gx_volume[gx_volume['month_num'] == -1][['country', 'brand', 'volume']].rename(columns={"volume": "volume_1"})
 
-	#gx_volume = gx_volume.merge(gx_volume_norm, on=['country', 'brand'])
-	#gx_volume['ratio'] = gx_volume.apply(lambda x: x.volume / x.volume_1, axis=1)
+	gx_volume = gx_volume.merge(gx_volume_norm, on=['country', 'brand'])
+	gx_volume['ratio'] = gx_volume.apply(lambda x: x.volume / x.volume_1, axis=1)
 
 	my_columns = set(gx_volume) - set(['month_num', 'volume'])
 	aux_2 = gx_volume.pivot_table(index=my_columns, columns='month_num', values=['volume'], aggfunc='first')
