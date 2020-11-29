@@ -1,0 +1,152 @@
+---
+title: "Novartis datathon"
+date: "11/28/2020"
+output: 
+  powerpoint_presentation:
+    default
+  ioslides_presentation:
+    widescreen: true
+    logo: www/logo.png
+    css: www/style.css
+always_allow_html: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = F, message = F)
+library(data.table)
+library(ggplot2)
+library(plotly)
+ggplot2::theme_set(theme_dark())
+dt <- fread("data/dt_merged.csv")
+```
+
+## NON-JUVENILE ASYMPTOTICS
+
+- Team member EDUARD GIMENEZ
+- Team member PATRICK ALTMEYER
+- Team member SIMON NEUMEYER
+- Team member JAKOB PÖRSCHMANN
+
+## Overview
+
+- Data exploration
+- Methodology
+- Forecasts
+- Interpretation of results
+
+# Data exploration
+
+## Time series (normalized)
+
+```{r}
+dt_plot <- dt[,.(value=mean(vol_indexed,na.rm=T)),by=.(month_num,country)]
+gg <- ggplot(dt_plot, aes(x=month_num, y=value, colour=country)) +
+  geom_line() +
+  scale_color_discrete(
+    name="Country:"
+  ) +
+  labs(
+    x="Month",
+    y="Volumne (normalized)"
+  )
+ggplotly(gg)
+```
+
+## Country clusters
+
+```{r}
+months <- c(1,5,10,20)
+dt_plot <- dt[,.(value=vol_indexed),by=.(month_num,brand,country)]
+gg <- ggplot(dt_plot[month_num %in% months], aes(x=value, fill=country)) +
+  geom_histogram(bins=50, position = "identity", alpha=0.5) +
+  scale_fill_discrete(
+    name="Country:"
+  ) +
+  facet_wrap(
+    ~month_num
+  ) +
+  labs(
+    x="Month",
+    y="Count"
+  )
+ggplotly(gg)
+```
+
+
+## Existing observations
+
+```{r}
+ggplot(
+  data=dt[month_num>-1,.(N=sum(!is.na(volume))),by=.(month_num,test)],
+  aes(x=month_num, y=N)
+) +
+  geom_col(fill="coral", alpha=0.5) +
+  facet_grid(
+    cols = vars(test),
+    scales = "free"
+  ) +
+  labs(
+    x="Volume (normalized)",
+    y="Count"
+  )
+```
+
+
+# Methodology
+
+## Framework
+
+1. Fit `classifier.fit(X,y)` in parallel for all $m \in [1,24]$:
+
+$$
+\begin{aligned}
+&&v_m&=\text{model}(\mathbf{X}_m) \\
+\text{where}&& \mathbf{X}_m &= \begin{pmatrix}
+\mathbf{C}_1 & v_{1,-137} & ... & v_{1,m-1} \\
+... & ... & ... & ... \\
+\mathbf{C}_{n_m} & v_{n_m,-137} & ... & v_{n_m,m-1}
+\end{pmatrix}
+\end{aligned}
+$$
+
+2. Predict `classifier.predict(X)` recursively for all $m \in [1,24]$ where
+
+$$
+\begin{aligned}
+&& \mathbf{X}_m = \begin{pmatrix}
+\mathbf{C}_1 & v_{1,-137} & ... & \hat{v}_{1,m-1} \\
+... & ... & ... & ... \\
+\mathbf{C}_{n_m} & v_{n_m,-137} & ... & \hat{v}_{n_m,m-1}
+\end{pmatrix}
+\end{aligned}
+$$
+
+## Confidence interval
+
+- Normalised predictions are (largely) $\hat{\mathbf{v}}\in[0,1]$.
+- We aim for small bands near 1 and 0 and wider bands elsewhere.
+- Predictions can be thought of as being generated from a **beta distribution** with $\mathbb{E}(\mathbf{v})=\frac{\alpha}{\alpha+\beta}$
+- Fix $\beta=5$ and compute $\alpha=\frac{\mathbf{v}\beta}{(1-\mathbf{v})}$ and then
+
+```
+L = sc.betaincinv(alpha, beta, .075)
+U = sc.betaincinv(alpha, beta, .925)
+```
+
+## Beta distribution
+
+![](www/beta.svg)
+
+## Score function
+
+PLACEHOLDER
+
+# Forecasts
+
+PLACEHOLDER
+
+# Interpretation
+
+PLACEHOLDER
+
+
