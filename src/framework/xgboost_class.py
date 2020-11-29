@@ -3,13 +3,33 @@ from calibrator import *
 from predictor import *
 import numpy as np
 import xgboost as xgb
+from sklearn.model_selection import GridSearchCV
+
+parameters = {'nthread':[1], # when use hyperthread, xgboost may become slower
+              'objective':['reg:pseudohubererror'], # checked for alternative but this is the best one
+              'learning_rate': [0.02], # so called `eta` value
+              'max_depth': [6, 7, 8],
+              'min_child_weight': [11],
+              'silent': [1],
+              'subsample': [0.8],
+              'colsample_bytree': [0.7],
+              'n_estimators': [40, 75, 150, 200], # number of trees
+              'missing':[-999],
+              'reg_lambda':[1.5],
+              'seed': [1337]}
 
 
 class XGB(main_model):
 
 	def __init__(self, data, col_num, testing=0, rand_state=42):
 		super().__init__(data, col_num, testing=0.2, rand_state=42)
-		self.model = xgb.XGBRegressor(n_estimators=100, objective='reg:squarederror')
+		xgb_model = xgb.XGBRegressor()
+
+		self.model = GridSearchCV(xgb_model, parameters, n_jobs=3,
+						   cv=4,
+						   # cv=StratifiedKFold(dtrain['QuoteConversion_Flag'], n_folds=5, shuffle=True),
+						   scoring='neg_mean_absolute_error',
+						   verbose=2, refit=True)
 
 
 	def _feature_engineering(self, data):
@@ -36,8 +56,8 @@ class XGB(main_model):
 			'Nov': 11,
 			'Dec': 12
 		})
-		data_X['sin_month'] = np.sin(2 * np.pi * data_X.month_entry / 12)
-		data_X['cos_month'] = np.cos(2 * np.pi * data_X.month_entry / 12)
+		#data_X['sin_month'] = np.sin(2 * np.pi * data_X.month_entry / 12)
+		#data_X['cos_month'] = np.cos(2 * np.pi * data_X.month_entry / 12)
 
 		## country target encoding
 		def country_group(country):
