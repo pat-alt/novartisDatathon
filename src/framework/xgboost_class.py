@@ -41,6 +41,13 @@ class XGB(main_model):
 		data_X['g_12'] = (data_X['-1'] - data_X['-12']) / data_X['-12']
 		data_X['g_24'] = (data_X['-1'] - data_X['-24']) / data_X['-24']
 
+        # trailing growth:
+        # col_num = str(self.col_num)
+        # t_current = data_X.columns.get_loc(col_num)
+        # data_X['tg_6'] = (data_X.iloc[:,t_current] - data_X.iloc[:,t_current-6]) / data_X.iloc[:,t_current-6]
+		# data_X['tg_12'] = (data_X.iloc[:,t_current] - data_X.iloc[:,t_current-12]) / data_X.iloc[:,t_current-12]
+		# data_X['tg_24'] = (data_X.iloc[:,t_current] - data_X.iloc[:,t_current-24]) / data_X.iloc[:,t_current-24]
+
 		# seasonality for months:
 		data_X['month_entry'] = data_X['month_entry'].map({
 			'Jan': 1,
@@ -56,6 +63,7 @@ class XGB(main_model):
 			'Nov': 11,
 			'Dec': 12
 		})
+
 		#data_X['sin_month'] = np.sin(2 * np.pi * data_X.month_entry / 12)
 		#data_X['cos_month'] = np.cos(2 * np.pi * data_X.month_entry / 12)
 
