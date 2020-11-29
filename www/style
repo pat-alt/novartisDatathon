@@ -1,0 +1,9 @@
+slides > slide.title-slide hgroup h1 {
+  font-weight: bold;
+  font-size: 24pt;
+  color: red;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
