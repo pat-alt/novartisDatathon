@@ -9,7 +9,7 @@ class XGB(main_model):
 
 	def __init__(self, data, col_num):
 		super().__init__(data, col_num)
-		self.model = xgb.XGBRegressor(n_estimators=100, objective='reg:squarederror')
+		self.model = xgb.XGBRegressor(n_estimators=100, objective='reg:pseudohubererror')
 
 
 	def _feature_engineering(self, data):
@@ -41,8 +41,8 @@ class XGB(main_model):
 			'Nov': 11,
 			'Dec': 12
 		})
-		data_X['sin_month'] = np.sin(2 * np.pi * data_X.month_entry / 12)
-		data_X['cos_month'] = np.cos(2 * np.pi * data_X.month_entry / 12)
+		#data_X['sin_month'] = np.sin(2 * np.pi * data_X.month_entry / 12)
+		#data_X['cos_month'] = np.cos(2 * np.pi * data_X.month_entry / 12)
 		return data_X, data_Y
 
 	def _make_pipe(self, data_X):

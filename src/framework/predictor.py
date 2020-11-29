@@ -16,7 +16,7 @@ from sklearn.impute import SimpleImputer, KNNImputer, IterativeImputer
 from sklearn.pipeline import Pipeline, make_pipeline
 from sklearn import preprocessing
 import os
-from framework.metrix import apply_metrics
+from metrix import apply_metrics
 
 
 def run_predictor_clean(root_path, model_name):
@@ -48,5 +48,6 @@ def run_predictor_clean(root_path, model_name):
 	print('-)')
 
 if __name__ == '__main__':
-	run_predictor_clean('C:\\Users\\EGimenez\\ME\\projects\\BGSE\\Novartis', 'helloworld')
+	#run_predictor_clean('C:\\Users\\EGimenez\\ME\\projects\\BGSE\\Novartis', 'helloworld')
 	#run_predictor_clean('C:\\Users\\EGimenez\\ME\\projects\\BGSE\\Novartis', 'calibrator_glm_3')
+	run_predictor_clean('/Users/simonneumeyer/Desktop/NOVARTIS/novartisDatathon', 'xgboost')

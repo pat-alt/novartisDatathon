@@ -235,7 +235,7 @@ class main_model():
 		return X_train_proposed
 
 	def _get_confidence_int(self, Y):
-		beta = 5.0
+		beta = 10.0
 
 		Y = np.array(Y)
 		Z = (1 - Y)
