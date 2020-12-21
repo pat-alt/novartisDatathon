@@ -9,3 +9,9 @@ This repo was used by our team for the 2020 [Novartis Datathon](https://godatath
 
 For all of us this was our first ever participation in a datathon/hackathon and an incredibly rewarding experience. 
 
+## Challenge
+
+The challenge involved predicting drug sales after the entrance of generic substitutes for different countries and brands - see below the aggregated and normalized time series. For our predictions we used XGBoost recursively. 
+
+![Drug sales](www/ts.png)
+
